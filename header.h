@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+void ricercaKMP(char*, char*);
 void calcolaLPS(char*,int,int**);
 void printInt(int*, int);
 void printString(char*);
