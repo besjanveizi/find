@@ -4,6 +4,7 @@
 ### version 2.0 data_structure
 
 **FILE PLACEMET**
+
 I file dove ci sono le parole da cercare e i path dei files sono stati messi come esempio all'interno della cartella del progetto:
 - _words.txt_
 - _files.txt_
