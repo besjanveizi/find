@@ -98,163 +98,39 @@ void deallocateDS(struct Word ** w_dla, char (*pta_w)[MAXC], int n, char (*pta_f
     w_dla = NULL;
 }
 
-struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
-
-    struct Occurrencies* head = NULL;
-    struct Occurrencies** ptpCoda= &head; // ultimo puntatore a nodo nella lista
-
-    int tot = 0;    //totali occorrenze
-    int i = 0;    // indice dei caratteri della riga del file
-    int j = 0;    // indice dei caratteri della parola
-    int riga = 0;   // indice riga del file
-    char rowFile[MAXC];   //riga file
-    int sub_str = 0;    // caratteri accentati nella riga del file
-    int sub_par = 0;    // caratteri accentati nella parola
-    int sub_tot = 0;    // sub_str - sub_par
-    int S_SIZE;   // lunghezza riga del file
-    int P_SIZE = strlen(parola);
-
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        fprintf (stderr, "ERRORE fopen(%s) in kmpInFile(): %s\n", filename,
-          strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    //Longest Prefix Suffix
-    int *lps = NULL;
-    if(!(lps = calcolaLPS(parola, P_SIZE))) exit(EXIT_FAILURE);
-
-    // calcola sub_par
-    for (int k = 0; k < (P_SIZE-1); k++)
-        if(isIn(parola[k], accenti)) sub_par++;
-    if(sub_par>0){
-        if((sub_par%2)==0) sub_par /= 2;
-        else {
-            sub_par++;
-            sub_par /= 2;
-        }
-    }
-
-    // calcola KMP
-    while (fgets (rowFile, MAXC, file)) {
-
-        char * ptr = rowFile;
-        for (; *ptr && *ptr != '\n'; ptr++) {} //elimina '\n'
-        *ptr = 0;
-        S_SIZE = strlen(rowFile);
-
-        if(strcmp(rowFile,"\n") == 0) { //riga vuota
-            riga++;
-            continue;
-        }
-
-        while (i < S_SIZE) {
-            if(isIn(rowFile[i], accenti))
-                sub_str++;
-
-            if (parola[j] == rowFile[i]) {
-                j++;
-                i++;
-            }
-
-            if (j == P_SIZE) {
-                sub_tot = 0;
-                sub_tot += (sub_str/2);
-                sub_tot -= sub_par;
-                // push nuovo nodo in fondo alla lista
-                pushOccurr(ptpCoda, riga + 1, (i - j)+1-sub_tot);
-                // aggiorna ptpCoda perché faccia riferimento al prossimo nodo
-                (*ptpCoda)->next = NULL;
-                ptpCoda = &((*ptpCoda)->next);
-                tot++;
-                j = *(lps+(j - 1));
-            }
-
-            else if (i < S_SIZE && parola[j] != rowFile[i]) {
-                if (j != 0) j = *(lps+(j - 1));
-                else i++;
-            }
-        }
-        i = 0;
-        j = 0;
-        riga++;
-        sub_str = 0;
-    }
-
-    fclose(file);
-    free(lps);
-    lps = NULL;
-    *totOcc = tot;
-    return head;
-}
-
-int *calcolaLPS(char* p, int P_SIZE) {
-    int len = 0;
-    int * tmp = NULL;
-
-    if (!(tmp = malloc (P_SIZE * sizeof (int)))) {
-        fprintf(stderr, "ERRORE malloc() per '%s' in calcolaLPS():\n\t%s\n",
-          p, strerror(errno));
-        free(tmp);
-        tmp = NULL;
-        return NULL;
-    }
-
-    *tmp = 0;
-
-    int i = 1;
-    while (i < P_SIZE) {
-      if (p[i] == p[len]) {
-          len++;
-          *(tmp+i) = len;
-          i++;
-      }
-      else if (len != 0)
-          len = *(tmp+(len - 1));
-      else {
-          *(tmp+i) = 0;
-          i++;
-      }
-    }
-    return tmp;
-}
-
-int isIn(char ch, const char* str){
-  int l = strlen(str);
-  for (int i = 0; i < l; i++) {
-    if(ch == str[i])
-      return 1;
+int ordinaDS(struct Word ** w_dla, int n, int m) {
+  qsort(w_dla, n, sizeof(struct Word *), compareWords);
+  if(dublicato) return 0;
+  for (int i = 0; i < n; i++){
+      qsort(w_dla[i]->p_file, m, sizeof(struct File *), compareFiles);
+      if(dublicato) return 0;
   }
-  return 0;
+  return 1;
 }
 
-void freeList(struct Occurrencies* head) {
-    struct Occurrencies* tmp;
-    while (head != NULL) {
-        tmp = head;
-        head = head->next;
-        free(tmp);
-    }
-    tmp = NULL;
+int compareWords(const void *s1, const void *s2) {
+  struct Word **e1 = (struct Word **) s1;
+  struct Word **e2 = (struct Word **) s2;
+  if(strcmp((*e1)->word, (*e2)->word)==0) {
+      printf("EXIT: errore dublicato '%s' tra le parole!!\n\n",(*e1)->word);
+      dublicato = true;
+  }
+  return strcmp((*e1)->word, (*e2)->word);
 }
 
-void pushOccurr(struct Occurrencies** ptpHead, int r, int c) {
-    struct Occurrencies* nuovaOcc = malloc(sizeof(struct Occurrencies));
-    nuovaOcc->n_row = r;
-    nuovaOcc->n_char = c;
-    nuovaOcc->next = *ptpHead; // prossimo ptpHead
-    *ptpHead = nuovaOcc; // cambio il valore del corrente ptpHead con il nuovo nodo
+int compareFiles(const void *s1, const void *s2) {
+  struct File **e1 = (struct File **) s1;
+  struct File **e2 = (struct File **) s2;
+  if(strcmp((*e1)->path, (*e2)->path)==0) {
+      printf("EXIT: errore dublicato '%s' tra i files!!\n\n", (*e1)->path);
+      dublicato = true;
+  }
+  if((*e1)->occurr < (*e2)->occurr) return +1;
+  else if((*e1)->occurr > (*e2)->occurr) return -1;
+  else return strcmp((*e1)->path, (*e2)->path);
 }
 
-void printList(struct Occurrencies* n) {
-    while (n != NULL) {
-        printf("\t\t\t\triga %d posizione %d\n", n->n_row, n->n_char);
-
-        n = n->next;
-    }
-}
-
+//filesgetter
 char (*fileToPtA(const char* filename, int *n))[MAXC]{
     char (*array)[MAXC] = NULL;
     int m = 0, max_righe = MAXR;
@@ -308,10 +184,9 @@ int findPathsPtA(char (*files)[MAXC], int n) {
   int i;
   FILE* appendFile = fopen (appFile, "a");    //file di appoggio
   if(!appendFile) {
-      fprintf (stderr, "ERRORE fopen(%s) in main(): %s\n", appFile,
+      fprintf (stderr, "ERRORE fopen(%s) in findPathsPtA(): %s\n", appFile,
         strerror(errno));
-      freePtrToArr(files);
-      return EXIT_FAILURE;
+      return 0;
   }
 
   int r_flag = 0;
@@ -499,7 +374,165 @@ void rmFile(const char * filename) {
     system(cmd);
 }
 
-void freePtrToArr (char (*ptr)[MAXC]) {
-  free (ptr); //free files
+void freePtrToArr(char (*ptr)[MAXC]) {
+  free (ptr);
   ptr = NULL;
+}
+
+//KMP
+struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
+
+    struct Occurrencies* head = NULL;
+    struct Occurrencies** ptpCoda= &head; // ultimo puntatore a nodo nella lista
+
+    int tot = 0;    //totali occorrenze
+    int i = 0;    // indice dei caratteri della riga del file
+    int j = 0;    // indice dei caratteri della parola
+    int riga = 0;   // indice riga del file
+    char rowFile[MAXC];   //riga file
+    int sub_str = 0;    // caratteri accentati nella riga del file
+    int sub_par = 0;    // caratteri accentati nella parola
+    int sub_tot = 0;    // sub_str - sub_par
+    int S_SIZE;   // lunghezza riga del file
+    int P_SIZE = strlen(parola);
+
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        fprintf (stderr, "ERRORE fopen(%s) in kmpInFile(): %s\n", filename,
+          strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    //Longest Prefix Suffix
+    int *lps = NULL;
+    if(!(lps = calcolaLPS(parola, P_SIZE))) exit(EXIT_FAILURE);
+
+    // calcola sub_par
+    for (int k = 0; k < (P_SIZE-1); k++)
+        if(isIn(parola[k], accenti)) sub_par++;
+    if(sub_par>0){
+        if((sub_par%2)==0) sub_par /= 2;
+        else {
+            sub_par++;
+            sub_par /= 2;
+        }
+    }
+
+    // calcola KMP
+    while (fgets (rowFile, MAXC, file)) {
+
+        char * ptr = rowFile;
+        for (; *ptr && *ptr != '\n'; ptr++) {} //elimina '\n'
+        *ptr = 0;
+        S_SIZE = strlen(rowFile);
+
+        if(strcmp(rowFile,"\n") == 0) { //riga vuota
+            riga++;
+            continue;
+        }
+
+        while (i < S_SIZE) {
+            if(isIn(rowFile[i], accenti))
+                sub_str++;
+
+            if (parola[j] == rowFile[i]) {
+                j++;
+                i++;
+            }
+
+            if (j == P_SIZE) {
+                sub_tot = 0;
+                sub_tot += (sub_str/2);
+                sub_tot -= sub_par;
+                // push nuovo nodo in fondo alla lista
+                pushOccurr(ptpCoda, riga + 1, (i - j)+1-sub_tot);
+                // aggiorna ptpCoda perché faccia riferimento al prossimo nodo
+                (*ptpCoda)->next = NULL;
+                ptpCoda = &((*ptpCoda)->next);
+                tot++;
+                j = *(lps+(j - 1));
+            }
+
+            else if (i < S_SIZE && parola[j] != rowFile[i]) {
+                if (j != 0) j = *(lps+(j - 1));
+                else i++;
+            }
+        }
+        i = 0;
+        j = 0;
+        riga++;
+        sub_str = 0;
+    }
+
+    fclose(file);
+    free(lps);
+    lps = NULL;
+    *totOcc = tot;
+    return head;
+}
+
+int *calcolaLPS(char* p, int P_SIZE) {
+    int len = 0;
+    int * tmp = NULL;
+
+    if (!(tmp = malloc (P_SIZE * sizeof (int)))) {
+        fprintf(stderr, "ERRORE malloc() per '%s' in calcolaLPS():\n\t%s\n",
+          p, strerror(errno));
+        free(tmp);
+        tmp = NULL;
+        return NULL;
+    }
+
+    *tmp = 0;
+
+    int i = 1;
+    while (i < P_SIZE) {
+      if (p[i] == p[len]) {
+          len++;
+          *(tmp+i) = len;
+          i++;
+      }
+      else if (len != 0)
+          len = *(tmp+(len - 1));
+      else {
+          *(tmp+i) = 0;
+          i++;
+      }
+    }
+    return tmp;
+}
+
+int isIn(char ch, const char* str){
+  int l = strlen(str);
+  for (int i = 0; i < l; i++) {
+    if(ch == str[i])
+      return 1;
+  }
+  return 0;
+}
+
+void freeList(struct Occurrencies* head) {
+    struct Occurrencies* tmp;
+    while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp);
+    }
+    tmp = NULL;
+}
+
+void pushOccurr(struct Occurrencies** ptpHead, int r, int c) {
+    struct Occurrencies* nuovaOcc = malloc(sizeof(struct Occurrencies));
+    nuovaOcc->n_row = r;
+    nuovaOcc->n_char = c;
+    nuovaOcc->next = *ptpHead; // prossimo ptpHead
+    *ptpHead = nuovaOcc; // cambio il valore del corrente ptpHead con il nuovo nodo
+}
+
+void printList(struct Occurrencies* n) {
+    while (n != NULL) {
+        printf("\t\t\t\triga %d posizione %d\n", n->n_row, n->n_char);
+
+        n = n->next;
+    }
 }

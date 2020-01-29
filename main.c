@@ -8,9 +8,13 @@ int main(int argc, char **argv){
 
     if(!(pta_w = fileToPtA(argv[1], &n))) return EXIT_FAILURE;
 
-    if(!(pta_f = fileToPtA(argv[2], &m))) return EXIT_FAILURE;
+    if(!(pta_f = fileToPtA(argv[2], &m))) {
+      freePtrToArr(pta_w);
+      return EXIT_FAILURE;
+    }
 
     if(!(findPathsPtA(pta_f, m))) {   //parsing dei files in pta_f
+      freePtrToArr(pta_w);
       freePtrToArr(pta_f);
       return EXIT_FAILURE;
     }
@@ -20,30 +24,13 @@ int main(int argc, char **argv){
     m = 0;
 
     //parsed files in appFile
-    if(!(pta_f = fileToPtA(appFile, &m))) return EXIT_FAILURE;
-
-    //rimuovi file di appoggio dove c'erano parsed files
-    rmFile(appFile);
-
-
-    //sort PtA
-    if(!sortPtA(pta_w, n)){
-      printf("ERRORE DUBLICATO in %s!!\n\n", argv[1]);
+    if(!(pta_f = fileToPtA(appFile, &m))) {
       freePtrToArr(pta_w);
       return EXIT_FAILURE;
     }
-    if(!sortPtA(pta_f, m)){
-      printf("ERRORE DUBLICATO in %s!!\n\n", argv[2]);
-      freePtrToArr(pta_f);
-      return EXIT_FAILURE;
-    }
 
-    //stampa PtA ordinati
-    printf("\n***Array Ordinati***\n");
-    printf("Words:\n");
-    printPtA(pta_w, n);
-    printf("Files:\n");
-    printPtA(pta_f, m);
+    //rimuovi file di appoggio dove c'erano parsed files
+    rmFile(appFile);
 
     //DLA(dynamic linear array) of pointers of n structs Word
     struct Word **w_dla = NULL;
@@ -53,10 +40,16 @@ int main(int argc, char **argv){
       return EXIT_FAILURE;
     }
 
-    // stampa DLA
+    // ordina Data Structure
+    if(!ordinaDS(w_dla, n, m)) {
+      deallocateDS(w_dla, pta_w, n, pta_f, m);
+      return EXIT_FAILURE;
+    }
+
+    // stampa Data Structure
     printDS(w_dla, n, m);
 
-    //dealloca DLA
+    //dealloca Data Structure
     deallocateDS(w_dla, pta_w, n, pta_f, m);
     return EXIT_SUCCESS;
 }

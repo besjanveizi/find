@@ -39,6 +39,14 @@ void deallocateDS(struct Word **, char (*)[MAXC], int, char (*)[MAXC], int);
 // funzione di stampa della Struttura Dati
 void printDS(struct Word **, int, int);
 
+// funzione di ordinamento della Struttura Dati
+int ordinaDS(struct Word **, int, int);
+// funzione comparatore per l'ordinamento alfabetico delle parole
+int compareWords(const void *, const void *);
+// funzione comparatore per l'ordinamento decrescente delle occorrenze
+// (alfabetico dei file in caso di uguale occorrenza
+int compareFiles(const void *, const void *);
+
 // funzione che restituisce un puntatore dell'array cui ogni elemento corrisponde
 // ad una riga del file dato in in input
 char (*fileToPtA(const char*, int *))[];
