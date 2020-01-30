@@ -89,7 +89,11 @@ int isIn(char, const char*);
 
 // funzione che aggiunge in fondo alla lista un nuovo nodo Occurrencies
 void pushOccurr(struct Occurrencies**, int, int);
-void printList(struct Occurrencies*); // stampa lista
+void printList(struct Occurrencies*); // stampa lista su schermo
+void fprintList(FILE*, struct Occurrencies*); // stampa lista su file
 void freeList(struct Occurrencies* head); //dealloca lista
+
+// funzione di creazione del file di report
+int mkreport(struct Word **, int, int);
 
 #endif

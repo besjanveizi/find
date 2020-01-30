@@ -46,8 +46,10 @@ int main(int argc, char **argv){
       return EXIT_FAILURE;
     }
 
-    // stampa Data Structure
-    printDS(w_dla, n, m);
+    if(!mkreport(w_dla, n, m)) {
+      deallocateDS(w_dla, pta_w, n, pta_f, m);
+      return EXIT_FAILURE;
+    }
 
     //dealloca Data Structure
     deallocateDS(w_dla, pta_w, n, pta_f, m);
