@@ -15,5 +15,5 @@ Mentre i files dove verrà eseguita la ricerca delle stringhe, cui path stanno i
 **USO**
 ```
 gcc -o exefile main.c functions.c
-./exefiles words.txt files.txt
+./exefile words.txt files.txt
 ```
