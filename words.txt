@@ -1,2 +1,6 @@
-di
-che
+zebra
+elefante
+balena
+ratto
+acquila
+cane

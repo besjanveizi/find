@@ -1,1 +1,4 @@
-./filesFolder
+./k.txt
+./m.txt
+./z.txt
+./a.txt

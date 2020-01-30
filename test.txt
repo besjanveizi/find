@@ -1,0 +1,5 @@
+balena
+farfalla
+leone
+rana
+ze
