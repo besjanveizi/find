@@ -1,8 +1,0 @@
-blu
-verde
-rosso
-grigio
-giallo
-nero
-bianco
-fucsia

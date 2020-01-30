@@ -1,6 +1,0 @@
-zebra
-elefante
-balena
-ratto
-acquila
-cane
