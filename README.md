@@ -7,13 +7,14 @@
 
 I file dove ci sono le parole da cercare e i path dei files sono stati messi come esempio all'interno della cartella del progetto:
 - _words.txt_
-- _files.txt_
+- _inputs.txt_
 
-Mentre i files dove verrà eseguita la ricerca delle stringhe, cui path stanno in _files.txt_ sono stati messi in _./filesfolder_.
+Mentre i files dove verrà eseguita la ricerca delle stringhe, cui path stanno in _inputs.txt_ sono stati messi in _./filesfolder_.
 
 
 **USO**
 ```
-gcc -o exefile main.c functions.c
-./exefiles words.txt files.txt
+make          // creata l'applicazione find (new build directory)
+              // usa ./find -h
+make clean    // pulita il buid directory
 ```
