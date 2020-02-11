@@ -1,4 +1,9 @@
-#include "header.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include "wf_getter.h"
+#include "kmp.h"
 
 /*****////////////////////*****/
 /*****    KMP Algorithm   *****/
@@ -6,6 +11,12 @@
 
 static const char low_accenti[] = {"àèìòùáéíóú"};
 static const char up_accenti[] = {"ÀÈÌÒÙÁÉÍÓÚ"};
+
+// funzione che calcola Longest Prefix Suffix
+static int *calcolaLPS(char*, int);
+
+// funzione che aggiunge in fondo alla lista un nuovo nodo Occurrencies
+static void pushOcc(struct Occurrencies**, int, int);
 
 // funzione che controlla se un carattere si trova in una stringa
 static int isCharInStr(char, const char*);
@@ -30,12 +41,14 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
     if (!file) {
         printf("\033[1;31m");printf("ERRORE [kmp.c -> kmpInFile()]:");printf("\033[0m");
         fprintf (stderr, " fopen(%s)\n\t%s\n", filename, strerror(errno));
-        exit(EXIT_FAILURE);
+        return NULL;
     }
+
+    lowerCaseStr(parola);   // trasforma in minuscolo la parola
 
     //Longest Prefix Suffix
     int *lps = NULL;
-    if(!(lps = calcolaLPS(parola, P_SIZE))) exit(EXIT_FAILURE);
+    if(!(lps = calcolaLPS(parola, P_SIZE))) return NULL;
 
     // calcola sub_par
     for (int k = 0; k < (P_SIZE); k++)
@@ -68,7 +81,7 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
             if (j == P_SIZE) {
                 sub_tot = (sub_str/2) - sub_par;
                 // push nuovo nodo in fondo alla lista
-                pushOccurr(ptpCoda, riga + 1, (i - j)+1-sub_tot);
+                pushOcc(ptpCoda, riga + 1, (i - j)+1-sub_tot);
                 // aggiorna ptpCoda perché faccia riferimento al prossimo nodo
                 (*ptpCoda)->next = NULL;
                 ptpCoda = &((*ptpCoda)->next);
@@ -100,10 +113,7 @@ int *calcolaLPS(char* p, int P_SIZE) {
 
     if (!(tmp = malloc (P_SIZE * sizeof (int)))) {
         printf("\033[1;31m");printf("ERRORE [kmp.c -> calcolaLPS()]:");printf("\033[0m");
-        fprintf(stderr, " malloc() per '%s'\n\t%s\n",
-          p, strerror(errno));
-        free(tmp);
-        tmp = NULL;
+        fprintf(stderr, " malloc() per '%s'\n\t%s\n", p, strerror(errno));
         return NULL;
     }
 
@@ -162,7 +172,7 @@ void freeList(struct Occurrencies* head) {
     tmp = NULL;
 }
 
-void pushOccurr(struct Occurrencies** ptpHead, int r, int c) {
+void pushOcc(struct Occurrencies** ptpHead, int r, int c) {
     struct Occurrencies* nuovaOcc = malloc(sizeof(struct Occurrencies));
     nuovaOcc->n_row = r;
     nuovaOcc->n_char = c;
@@ -170,14 +180,14 @@ void pushOccurr(struct Occurrencies** ptpHead, int r, int c) {
     *ptpHead = nuovaOcc; // cambio il valore del corrente ptpHead con il nuovo nodo
 }
 
-void printList(struct Occurrencies* n) {
+void printOcc(struct Occurrencies* n) {
     while (n != NULL) {
         printf("\t\triga %d posizione %d\n", n->n_row, n->n_char);
         n = n->next;
     }
 }
 
-void fprintList(FILE* wr, struct Occurrencies* n) {
+void fprintOcc(FILE* wr, struct Occurrencies* n) {
     while (n != NULL) {
         fprintf(wr, "%d %d\r\n", n->n_row, n->n_char);
         n = n->next;

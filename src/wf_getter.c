@@ -1,8 +1,28 @@
-#include "header.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>  // lstat()
+#include <sys/stat.h>   // lstat()
+#include <unistd.h>     // lstat()
+#include <dirent.h>     //opendir() & readdir()
+#include "find.h"       //verbose_flag, arg_exclude, dim_arg_exlude
+#include "report.h"     //appFile
+#include "wf_getter.h"
 
-/*****//////////////////////////*****/
-/*****    words&files getters   *****/
-/*****//////////////////////////*****/
+// funzione che ottiene tutti i file (rispettando il flag di ricorsione) e li
+// scrive in ordine di visita in appFile
+static int getPaths(char *, int, FILE**);
+// funzione che ottiene i file di una specifica directory
+static int checkDir(char *, int, FILE**);
+
+// funzioni per verificare se una estensione è esclusa
+static int isExcluded(char *);
+static char *getExtension(char *);
+static char *getBasename(char *);
+
+// funzione che stampa gli elementi del PtA exclude
+static void printPtA(char (*)[10], int );
 
 char (*fileToPtA(const char* filename, int *n))[MAXC]{
     char (*array)[MAXC] = NULL;
@@ -18,7 +38,6 @@ char (*fileToPtA(const char* filename, int *n))[MAXC]{
     if (!(array = malloc (MAXR * sizeof *array))) { // alloca MAXR puntatori
         printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtA()]:");printf("\033[0m");
         fprintf(stderr, " malloc() per '%s':\n\t%s\n", filename, strerror(errno));
-        freePtA(array);
         return NULL;
     }
 
@@ -92,7 +111,7 @@ int findPathsPtA(char (*files)[MAXC], int n) {
           continue;   //ignora righe " [r]"
 
       if(isAbsolute(files[i])) continue;
-      else strcpy(files[i], getAbsolute(files[i], currentDir));
+      else strcpy(files[i], getAbsolute(files[i]));
       if(files[i][0] == '\0') {
           fclose(appendFile);
           rmFile(appFile);
@@ -116,12 +135,13 @@ int isAbsolute(char * path_str) {
 	else return 0;
 }
 
-char * getAbsolute(char *str, const char * currentDir){
+char * getAbsolute(char *str){
     int i, cPunto = 0, cSlash = 0, cUp;
-		char absPath[1024];
+		char absPath[MAXC];
+    char cwd[MAXC];
 		char *abs;
-
-		strcpy(absPath, currentDir);
+    //current directory
+		strcpy(absPath, getcwd(cwd, sizeof(cwd)));
 
 		if(str[0] != '.') {
 			strcat(absPath, "/");
@@ -167,16 +187,20 @@ char * getAbsolute(char *str, const char * currentDir){
 
 int getPaths(char *pathname, int rf, FILE** appendFile) {
     struct stat s;
-    // int checkDirOut;
 
     if(lstat(pathname,&s) == 0) {
+        if(verbose_flag) printf("  Lista completa dei file:\n");
+        if(arg_exclude){
+          printf("* Esclusi i file con estensione:\t");
+          printPtA(arg_exclude, dim_arg_exclude);
+        }
         if(S_ISDIR(s.st_mode)) {
-            //checkDirOut = checkDir(pathname, rf, appendFile);
             if(!checkDir(pathname, rf, appendFile)) return 0;
         }
         else if(S_ISREG(s.st_mode)) {
             if(isExcluded(getExtension(pathname))) return 1;
             else fprintf(*appendFile, "\n%s\r\n", pathname);
+            if(verbose_flag) printf("\t%s\n", pathname);
         }
 
         else {    //pathname non è una cartella o un file regolare
@@ -211,8 +235,8 @@ int checkDir(char *dirPath, int rf, FILE** appendFile) {
             continue;
 
         if (entry->d_type == DT_DIR && rf == 1) {
-            char path[1024] = "";
-            strcat(path, dirPath);
+            char path[MAXC];
+            strcpy(path, dirPath);
             strcat(path, "/");
             strcat(path, entry->d_name);
             checkDir(path, rf, appendFile);
@@ -220,6 +244,7 @@ int checkDir(char *dirPath, int rf, FILE** appendFile) {
         else if(entry->d_type == DT_REG) {
             if(isExcluded(getExtension(entry->d_name))) continue;
             fprintf(*appendFile, "\n%s/%s\r\n", dirPath, entry->d_name);
+            if(verbose_flag) printf("\t%s/%s\n", dirPath, entry->d_name);
         }
         //file type diversi da directories (con r_flag = 1) o file regolari sono ignorati
         else {
@@ -248,25 +273,18 @@ char *getBasename(char *path){
 
 int isExcluded(char * ext) {
   if(ext == NULL) return 1;
-  for (int i = 0; i < dim_arg_exlude; i++)
-    if(strcmp(ext, arg_exlude[i]) == 0) return 1;
+  for (int i = 0; i < dim_arg_exclude; i++)
+    if(strcmp(ext, arg_exclude[i]) == 0) return 1;
   return 0;
 }
 
-void printPtA(char (*arr)[MAXC], int n){
+void printPtA(char (*arr)[10], int n){
   for (int i = 0; i < n;) {
     printf ("'%s' ", arr[i]);
     i++;
     if(i<n) printf("| ");
   }
   printf("\n");
-}
-
-void rmFile(const char * filename) {
-    char cmd[120];
-    strcpy(cmd, "rm ");
-    strcat(cmd, filename);
-    system(cmd);
 }
 
 void freePtA(char (*ptr)[MAXC]) {
