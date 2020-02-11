@@ -1,16 +1,22 @@
-#include "header.h"
-
-/*****/////////////////////*****/
-/*****    Data Structure   *****/
-/*****/////////////////////*****/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <stdbool.h>  // dublicato
+#include <time.h>
+#include "find.h"   // verbose_flag
+#include "dataStructure.h"
+#include "kmp.h"    //kmpInFile(), struct Occurrencies, fprintOcc(), freeList()
 
 static bool dublicato = false;
-double tot_time;
-//static const char *reportFile = "report.txt";
 
 struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) {
+
   int i, j;
-  tot_time = 0;
+  clock_t time_begin;
+  clock_t time_end;
+  double time_spent;
+  double tot_time = 0;
   //DLA(dynamic linear array) of pointers of n structs Word
   struct Word **w_dla = malloc(n * sizeof(struct Word *));
   if(!w_dla){
@@ -36,7 +42,7 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
     }
     strcpy(w_dla[i]->word, pta_w[i]);
     w_dla[i]->tot_occurr = 0;
-    begin = clock();
+    time_begin = clock();
     if(verbose_flag) printf(" -- Ricerca occorrenze della parola '%s'\n", w_dla[i]->word);
     for (j = 0; j < m; j++) {
       //allocate struct File and w_dla[i]->p_file[j] points to it
@@ -53,8 +59,8 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
       //   return NULL;
       // }
 
-      end = clock();
-      time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+      time_end = clock();
+      time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
       if(verbose_flag) printf("\tsul file '%s' (%lf)\n", w_dla[i]->p_file[j]->path, time_spent);
       w_dla[i]->tot_occurr += w_dla[i]->p_file[j]->occurr;
       tot_time += time_spent;
@@ -64,11 +70,11 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
   return w_dla;
 }
 
-int mkreport(struct Word ** w_dla, int n, int m, char * reportFile) {
+int fprintDS(struct Word ** w_dla, int n, int m, char * reportFile) {
     int i, j;
     FILE* wr = fopen (reportFile, "w");    //file di output per report
     if(!wr) {
-        printf("\033[1;31m");printf("ERRORE [dataStructure.c -> mkreport()]:");printf("\033[0m");
+        printf("\033[1;31m");printf("ERRORE [dataStructure.c -> fprintDS()]:");printf("\033[0m");
         fprintf (stderr, " fopen(%s)\n\t%s\n", reportFile,
           strerror(errno));
         return 0;
@@ -79,7 +85,7 @@ int mkreport(struct Word ** w_dla, int n, int m, char * reportFile) {
         for (j = 0; j < m; j++) {
             fprintf(wr, "FILE %s\r\n", w_dla[i]->p_file[j]->path);
             fprintf(wr, "OCCURRENCES %d\r\n", w_dla[i]->p_file[j]->occurr);
-            fprintList(wr, w_dla[i]->p_file[j]->head);
+            fprintOcc(wr, w_dla[i]->p_file[j]->head);
         }
     }
     fclose(wr);
@@ -95,7 +101,7 @@ void printDS(struct Word ** w_dla, int n, int m) {
         for (j = 0; j < m; j++){
             printf(" ->\tFILE %s\r\n", w_dla[i]->p_file[j]->path);
             printf("   \tOCCURRENCES %d\r\n", w_dla[i]->p_file[j]->occurr);
-            printList(w_dla[i]->p_file[j]->head);
+            printOcc(w_dla[i]->p_file[j]->head);
       }
       printf("-------------------------------------------------\n");
     }
