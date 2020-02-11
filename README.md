@@ -1,7 +1,7 @@
 # occorrenze-stringhe
 **Applicazione in C che consente di individuare il numero di occorrenze di un insieme di stringhe all'interno di un gruppo di file.**
 
-### version 2.0 data_structure
+### version 3.0 [final]
 
 **FILE PLACEMET**
 
@@ -16,5 +16,5 @@ Mentre i files dove verrà eseguita la ricerca delle stringhe, cui path stanno i
 ```
 make          // creata l'applicazione find (new build directory)
               // usa ./find -h
-make clean    // pulita il buid directory
+make clean    // pulita la buid directory
 ```
