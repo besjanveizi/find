@@ -1,20 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>       // occPresente
+#include <errno.h>
+#include <stdbool.h>    // occPresente
 #include <time.h>
-#include "find.h"          // menù arguments
+#include "find.h"     // menù arguments
 #include "report.h"
-#include "dataStructure.h" // MAXC, isAbsolute(), getAbsolute(), fileToPtA(), freePtA(),
-                           // findPathsPtA(), fprintDS(), ordinaDS(), deallocateDS()
-#include "kmp.h"           // lowerCaseStr()
+#include "dataStructure.h"    // createDS(), fprintDS(), ordinaDS(), deallocateDS()
+#include "wf_getter.h"     // isAbsolute(), getAbsolute(), fileToPtP(), freePtP(), findPathsPtP()
+#include "kmp.h"    // lowerCaseStr()
 
-static char wordsFile[MAXC];
-static char inputFile[MAXC];
-static char reportFile[MAXC];
-static char selectedFile[MAXC];
 
-static char (*rowFile)[MAXC];
+static int max_char = 50;
+static char *wordsFile = NULL;
+static char *inputFile = NULL;
+static char *outputFile = NULL;
+static char *reportFile = NULL;
+static char *selectedFile = NULL;
+
+static char **rowFile;
 
 static char* searchWord;
 static char* searchFile;
@@ -29,73 +33,121 @@ static int l_Obuf = strlen("OCCURRENCES");
 const char *appFile = "append.txt";
 static char * getSubstr(char *, int);
 
+// funzione per eliminare un file
+static void rmFile(const char *);
+
+static char * checkNgetAbs(char *);
+
+char * checkNgetAbs(char * str) {
+  char * abs = NULL;
+  int optimal_size = 1 + strlen(str);
+  if(!isAbsolute(str)) {
+      optimal_size += size_cwd;
+      abs = getAbsolute(str, optimal_size);
+      if(abs[0] == '\0') {
+          free(abs);
+          return NULL;
+      }
+  }
+  else {
+    abs = malloc(optimal_size);
+    strcpy(abs, str);   // isAbsolute()
+  }
+  return abs;
+}
+
 int generaReport() {
   clock_t time_begin;
   clock_t time_end;
   double time_spent;
 
-  int n = 0;    // dimensione pta_w
-  int m = 0;    // dimensione pta_f
-  char (*pta_w)[MAXC] = NULL; // puntatore di array di [MAXC] char per parole
-  char (*pta_f)[MAXC] = NULL; // puntatore di array di [MAXC] char per files
+  int n = 0;    // dimensione ptp_w
+  int m = 0;    // dimensione ptp_f
+  char **ptp_w = NULL; // puntatore di array di char [MAXC] per parole
+  char **ptp_f = NULL; // puntatore di array di char [MAXC] per i percorsi dei files
 
-  if(!isAbsolute(arg_words))
-    strcpy(wordsFile, getAbsolute(arg_words));
-  if(wordsFile[0] == '\0') {
+  wordsFile = checkNgetAbs(arg_words);
+  if(!wordsFile) {
     printf("-w | --words argument failure\n");
     return 0;
   }
 
-  if(!isAbsolute(arg_input))
-    strcpy(inputFile, getAbsolute(arg_input));
-  if(inputFile[0] == '\0') {
+  inputFile = checkNgetAbs(arg_input);
+  if(!inputFile) {
     printf("-i | --input argument failure\n");
+    free(wordsFile);
     return 0;
   }
 
-
-  if(!(pta_w = fileToPtA(wordsFile, &n))) return 0;
+  if(!(ptp_w = fileToPtP(wordsFile, &n, &max_char))) {
+    freePtP(ptp_w, n);
+    free(wordsFile);
+    free(inputFile);
+    return 0;
+  }
   printf("Words filepath: '%s'\n", wordsFile);
+  int maxc_w = max_char;
 
-  if(!(pta_f = fileToPtA(inputFile, &m))) {
-    freePtA(pta_w);
+  if(!(ptp_f = fileToPtP(inputFile, &m, &max_char))) {
+    freePtP(ptp_w, n);
+    freePtP(ptp_f, m);
+    free(wordsFile);
+    free(inputFile);
     return 0;
   }
   printf("Input filepath: '%s'\n", inputFile);
+
+  if(verbose_flag) printf("  Lista completa dei file:\n");
+  if(arg_exclude){
+    printf("* Esclusi i file con estensione:  ");
+    printPtP(arg_exclude, dim_arg_exclude);
+  }
   time_begin = clock();
-  if(!(findPathsPtA(pta_f, m))) {   //parsing dei files in pta_f
-    freePtA(pta_w);
-    freePtA(pta_f);
+  if(!(findPathsPtP(ptp_f, m))) {   //parsing dei files in ptp_f
+    freePtP(ptp_w, n);
+    freePtP(ptp_f, m);
+    free(wordsFile);
+    free(inputFile);
     return 0;
   }
 
   //dealloca e reinizializza files
-  freePtA(pta_f);
+  freePtP(ptp_f, m);
   m = 0;
 
   //parsed files in appFile
-  if(!(pta_f = fileToPtA(appFile, &m))) {
-    freePtA(pta_w);
+  if(!(ptp_f = fileToPtP(appFile, &m, &max_char))) {
+    freePtP(ptp_w, n);
+    freePtP(ptp_f, m);
+    free(wordsFile);
+    free(inputFile);
+    rmFile(appFile);
     return 0;
   }
+  int maxc_f = max_char;
 
   //rimuovi file di appoggio dove c'erano parsed files
   rmFile(appFile);
   time_end = clock();
   time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
-  if(verbose_flag) printf(" -- Visitati tutti i file specificati in '%s' (%lf)\n", inputFile, time_spent);
+  if(verbose_flag)
+    printf(" -- Visitati tutti i file specificati in '%s' (%lf)\n", inputFile, time_spent);
 
   //DLA(dynamic linear array) of pointers of n structs Word
   struct Word **w_dla = NULL;
   //crea DLA
-  if(!(w_dla = createDS(pta_w, n, pta_f, m))) {
-    deallocateDS(w_dla, pta_w, n, pta_f, m);
+  if(!(w_dla = createDS(ptp_w, n, ptp_f, m, maxc_w, maxc_f))) {
+    free(wordsFile);
+    free(inputFile);
+    deallocateDS(w_dla, ptp_w, n, ptp_f, m);
     return 0;
   }
   // ordina Data Structure
   time_begin = clock();
   if(!ordinaDS(w_dla, n, m)) {
-    deallocateDS(w_dla, pta_w, n, pta_f, m);
+    free(wordsFile);
+    free(inputFile);
+    deallocateDS(w_dla, ptp_w, n, ptp_f, m);
     return 0;
   }
   time_end = clock();
@@ -103,21 +155,38 @@ int generaReport() {
   if(verbose_flag) printf(" -- Data Structure Ordinata (%lf)\n", time_spent);
 
   if(arg_output) {
-    char outputFile[MAXC];
-    if(!isAbsolute(arg_output)) strcpy(outputFile, getAbsolute(arg_output));
-    if(outputFile[0] == '\0') return 0;
-    printf("Output filepath: '%s'\n", outputFile);
-    if(!fprintDS(w_dla, n, m, outputFile)) {
-      deallocateDS(w_dla, pta_w, n, pta_f, m);
+    outputFile = checkNgetAbs(arg_output);
+    if(!outputFile) {
+      printf("-o | --output argument failure\n");
+      free(wordsFile);
+      free(inputFile);
+      deallocateDS(w_dla, ptp_w, n, ptp_f, m);
       return 0;
     }
+    FILE* oF = fopen (outputFile, "w+");    //file di output per report
+    if(!oF) {
+        printf("\033[1;31m");printf("ERRORE [report.c -> createDS()]:");printf("\033[0m");
+        fprintf (stderr, " fopen(%s)\n\t%s\n", outputFile, strerror(errno));
+        free(wordsFile);
+        free(inputFile);
+        free(outputFile);
+        deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+        return 0;
+    }
+    printf("Output filepath: '%s'\n", outputFile);
+    fprintDS(w_dla, n, m, &oF);
+    fclose(oF);
     printf("[ REPORT GENERATO ]\n");
   }
 
   // printDS(w_dla, n, m);   // stampa DS su terminale
 
+  free(wordsFile);
+  free(inputFile);
+  free(outputFile);
+
   //dealloca Data Structure
-  deallocateDS(w_dla, pta_w, n, pta_f, m);
+  deallocateDS(w_dla, ptp_w, n, ptp_f, m);
   return 1;
 }
 
@@ -130,14 +199,16 @@ int analisiListPaths() {
     int totOcc;
     bool occPresente = false;
 
-    if(!isAbsolute(arg_report))
-      strcpy(reportFile, getAbsolute(arg_report));
-    if(reportFile[0] == '\0') {
+    reportFile = checkNgetAbs(arg_report);
+    if(!reportFile) {
       printf("-r | --report argument failure\n");
       return 0;
     }
 
-    if(!(rowFile = fileToPtA(reportFile, &n_rows))) return 0;
+    if(!(rowFile = fileToPtP(reportFile, &n_rows, &max_char))) {
+      free(reportFile);
+      return 0;
+    }
     printf("Report filepath: '%s'\n", reportFile);
 
     lowerCaseStr(arg_show);   // trasforma parola in minuscolo
@@ -155,7 +226,8 @@ int analisiListPaths() {
                 if(totOcc == 0) {
                     printf("Non c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
                       searchWord);
-                    freePtA(rowFile);
+                    freePtP(rowFile, n_rows);
+                    free(reportFile);
                     return 1; // "TOTAL" 0
                 }
                 j++; // check "FILES" of parola
@@ -175,13 +247,15 @@ int analisiListPaths() {
                 }
                 if(!occPresente) printf("Tuttavia non ci sono occorrenze pari/maggiori di '%d' tra i file specificati\n",
                   oInput);
-                freePtA(rowFile);
+                freePtP(rowFile, n_rows);
+                free(reportFile);
                 return 1; // ho stampato tutte le occorrenze per ciascun path per parola
             }
         }
     }
     printf("La parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
-    freePtA(rowFile);
+    freePtP(rowFile, n_rows);
+    free(reportFile);
     return 1;
 }
 
@@ -194,21 +268,24 @@ int analisiListOcc() {
   int skipOcc; // #occorrenze da saltare per controllare prossimo "FILE"
   int n_rows = 0;
 
-  if(!isAbsolute(arg_report))
-    strcpy(reportFile, getAbsolute(arg_report));
-  if(reportFile[0] == '\0') {
+  reportFile = checkNgetAbs(arg_report);
+  if(!reportFile) {
     printf("-r | --report argument failure\n");
     return 0;
   }
 
-  if(!isAbsolute(arg_file))
-    strcpy(selectedFile, getAbsolute(arg_file));
-  if(selectedFile[0] == '\0') {
-    printf("-f | --file argument failure\n");
+  selectedFile = checkNgetAbs(arg_file);
+  if(!selectedFile) {
+    printf("-r | --report argument failure\n");
+    free(reportFile);
     return 0;
   }
 
-  if(!(rowFile = fileToPtA(reportFile, &n_rows))) return 0;
+  if(!(rowFile = fileToPtP(reportFile, &n_rows, &max_char))) {
+    free(reportFile);
+    free(selectedFile);
+    return 0;
+  }
   printf("Report filepath: '%s'\n", reportFile);
 
   lowerCaseStr(arg_show);   // trasforma parola in minuscolo
@@ -225,7 +302,9 @@ int analisiListOcc() {
               if(tot == 0) {
                   printf("Non c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
                     searchWord);
-                  freePtA(rowFile);
+                  freePtP(rowFile, n_rows);
+                  free(reportFile);
+                  free(selectedFile);
                   return 1; // "TOTAL" 0
               }
               j++; // check "FILES" of parola
@@ -246,7 +325,9 @@ int analisiListOcc() {
                           k++;
                           countOcc--;
                       }
-                      freePtA(rowFile);
+                      freePtP(rowFile, n_rows);
+                      free(reportFile);
+                      free(selectedFile);
                       return 1;
                   }
                   // not the file, skip occurrences
@@ -257,13 +338,17 @@ int analisiListOcc() {
               }
               printf("Il path '%s' non era presente nel file dei percorsi, perciò non si trova nel report\n",
                 selectedFile);
-              freePtA(rowFile);
+              freePtP(rowFile, n_rows);
+              free(reportFile);
+              free(selectedFile);
               return 1; //path non trovato, errore in selectedFile
           }
       }
   }
   printf("La parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
-  freePtA(rowFile);
+  freePtP(rowFile, n_rows);
+  free(reportFile);
+  free(selectedFile);
   return 1;
 }
 

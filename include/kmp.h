@@ -14,7 +14,7 @@ struct Occurrencies* kmpInFile(char *, char *, int *);
 void lowerCaseStr(char *);
 
 void printOcc(struct Occurrencies*); // stampa lista su terminale
-void fprintOcc(FILE*, struct Occurrencies*); // stampa lista su file
+void fprintOcc(FILE**, struct Occurrencies*); // stampa lista su file
 void freeList(struct Occurrencies* head); //dealloca lista
 
 #endif

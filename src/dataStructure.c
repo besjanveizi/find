@@ -6,11 +6,12 @@
 #include <time.h>
 #include "find.h"   // verbose_flag
 #include "dataStructure.h"
+#include "wf_getter.h"    //freePtP()
 #include "kmp.h"    //kmpInFile(), struct Occurrencies, fprintOcc(), freeList()
 
 static bool dublicato = false;
 
-struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) {
+struct Word ** createDS(char **ptp_w, int n, char **ptp_f, int m, int maxc_w, int maxc_f) {
 
   int i, j;
   clock_t time_begin;
@@ -40,7 +41,8 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
       fprintf(stderr, " malloc(w_dla[%d]->p_file):\n\t%s\n",i , strerror(errno));
       return NULL;
     }
-    strcpy(w_dla[i]->word, pta_w[i]);
+    w_dla[i]->word = malloc(maxc_w);
+    strcpy(w_dla[i]->word, ptp_w[i]);
     w_dla[i]->tot_occurr = 0;
     time_begin = clock();
     if(verbose_flag) printf(" -- Ricerca occorrenze della parola '%s'\n", w_dla[i]->word);
@@ -52,7 +54,9 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
         fprintf(stderr, " malloc(w_dla[%d]->p_file[%d]):\n\t%s\n",i ,j , strerror(errno));
         return NULL;
       }
-      strcpy(w_dla[i]->p_file[j]->path, pta_f[j]);
+
+      w_dla[i]->p_file[j]->path = malloc(maxc_f);
+      strcpy(w_dla[i]->p_file[j]->path, ptp_f[j]);
       w_dla[i]->p_file[j]->head = kmpInFile(w_dla[i]->word, w_dla[i]->p_file[j]->path, &w_dla[i]->p_file[j]->occurr);
       // if(!(w_dla[i]->p_file[j]->head)){
       //   fprintf(stderr, "ERRORE kmpInFile(w_dla[%d]->p_file[%d]->head):\n\t%s\n",i ,j , strerror(errno));
@@ -70,26 +74,17 @@ struct Word ** createDS(char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) 
   return w_dla;
 }
 
-int fprintDS(struct Word ** w_dla, int n, int m, char * reportFile) {
+void fprintDS(struct Word ** w_dla, int n, int m, FILE** oF) {
     int i, j;
-    FILE* wr = fopen (reportFile, "w");    //file di output per report
-    if(!wr) {
-        printf("\033[1;31m");printf("ERRORE [dataStructure.c -> fprintDS()]:");printf("\033[0m");
-        fprintf (stderr, " fopen(%s)\n\t%s\n", reportFile,
-          strerror(errno));
-        return 0;
-    }
     for (i = 0; i < n; i++) {
-        fprintf(wr, "WORD %s\r\n", w_dla[i]->word);
-        fprintf(wr, "TOTAL %d\r\n", w_dla[i]->tot_occurr);
+        fprintf(*oF, "WORD %s\r\n", w_dla[i]->word);
+        fprintf(*oF, "TOTAL %d\r\n", w_dla[i]->tot_occurr);
         for (j = 0; j < m; j++) {
-            fprintf(wr, "FILE %s\r\n", w_dla[i]->p_file[j]->path);
-            fprintf(wr, "OCCURRENCES %d\r\n", w_dla[i]->p_file[j]->occurr);
-            fprintOcc(wr, w_dla[i]->p_file[j]->head);
+            fprintf(*oF, "FILE %s\r\n", w_dla[i]->p_file[j]->path);
+            fprintf(*oF, "OCCURRENCES %d\r\n", w_dla[i]->p_file[j]->occurr);
+            fprintOcc(oF, w_dla[i]->p_file[j]->head);
         }
     }
-    fclose(wr);
-    return 1;
 }
 
 void printDS(struct Word ** w_dla, int n, int m) {
@@ -107,32 +102,44 @@ void printDS(struct Word ** w_dla, int n, int m) {
     }
 }
 
-void deallocateDS(struct Word ** w_dla, char (*pta_w)[MAXC], int n, char (*pta_f)[MAXC], int m) {
+void deallocateDS(struct Word ** w_dla, char **ptp_w, int n, char **ptp_f, int m) {
     int i ,j;
-    //memory management array 2D pta_w e pta_f
-    freePtA(pta_w);
-    freePtA(pta_f);
+    //memory management ptp_w e ptp_f
+    freePtP(ptp_w, n);
+    freePtP(ptp_f, m);
     //memory management data structure
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < m; j++){
-            if((w_dla[i]->p_file[j]->head) != NULL) freeList(w_dla[i]->p_file[j]->head);
-            if((w_dla[i]->p_file[j]) != NULL) {
-                free(w_dla[i]->p_file[j]);
-                w_dla[i]->p_file[j] = NULL;
+    if(w_dla) {
+        for (i = 0; i < n; i++) {
+            for (j = 0; j < m; j++){
+                if((w_dla[i]->p_file[j]->head) != NULL) freeList(w_dla[i]->p_file[j]->head);
+                if((w_dla[i]->p_file[j]->path) != NULL) {
+                  free(w_dla[i]->p_file[j]->path);
+                  w_dla[i]->p_file[j]->path = NULL;
+
+                }
+                if((w_dla[i]->p_file[j]) != NULL) {
+                    free(w_dla[i]->p_file[j]);
+                    w_dla[i]->p_file[j] = NULL;
+                }
+            }
+            if((w_dla[i]->p_file) != NULL){
+                free(w_dla[i]->p_file);
+                w_dla[i]->p_file = NULL;
+            }
+            if((w_dla[i]->word) != NULL) {
+              free(w_dla[i]->word);
+              w_dla[i]->word = NULL;
+
+            }
+
+            if((w_dla[i]) != NULL) {
+                free(w_dla[i]);
+                w_dla[i] = NULL;
             }
         }
-        if((w_dla[i]->p_file) != NULL){
-            free(w_dla[i]->p_file);
-            w_dla[i]->p_file = NULL;
-        }
-
-        if((w_dla[i]) != NULL) {
-            free(w_dla[i]);
-            w_dla[i] = NULL;
-        }
+        free(w_dla);
+        w_dla = NULL;
     }
-    free(w_dla);
-    w_dla = NULL;
 }
 
 int ordinaDS(struct Word ** w_dla, int n, int m) {
