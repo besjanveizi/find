@@ -2,13 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>   // getcwd()
 #include <getopt.h>   // getopt_long_only()
+#include <unistd.h>     // getcwd()
 #include "find.h"
 #include "report.h"   // generaReport(), analisiListPaths(), analisiListOcc()
+#include "wf_getter.h"    //freePtP()
 
-char (*arg_exclude)[10];
-int dim_arg_exclude;
+char * currentDir;
+int size_cwd;
+char **arg_exclude;
+int dim_arg_exclude = 0;
 int verbose_flag;
 char *arg_words;
 char *arg_input;
@@ -19,14 +22,12 @@ char *arg_file;
 int oInput = 1;
 
 static void help(void);
-static void crediti(void);
+static void info(void);
 
 int main (int argc, char **argv) {
 
-    if (argc == 1) crediti();
+    if (argc == 1) info();
     int c;
-    int intit_arg_exclude = 5; //iniziale massimo #elementi di arg_exclude
-    int i = 0;
 
     while (1) {
         static struct option long_options[] =
@@ -55,7 +56,7 @@ int main (int argc, char **argv) {
 
         switch (c) {
             case 0:
-                printf("Flag %s in set\n", long_options[option_index].name);
+                printf("Flag %s is set\n", long_options[option_index].name);
               break;
             case 'h':   //-help, --help, -h, --h
                 printf("\033[H\033[J"); // pulisce la console
@@ -71,32 +72,26 @@ int main (int argc, char **argv) {
                 arg_output = optarg;    //parametro per file del report
               break;
             case 'e':
-                if (!(arg_exclude = malloc (intit_arg_exclude * sizeof *arg_exclude))) {
+                optind--;
+                int start_optind = optind;
+                int dim_ext;
+                int i = 0;
+                for (; optind < argc && *argv[optind] != '-'; optind++) {
+                  dim_arg_exclude++;
+                }
+                if (!(arg_exclude = malloc (dim_arg_exclude * sizeof *arg_exclude))) {
                     printf("\033[1;31m");printf("ERRORE:");printf("\033[0m");
                     fprintf(stderr, " malloc() per arg_exclude in main.c:\n\t%s\n",
                       strerror(errno));
                     return EXIT_FAILURE;
                 }
-                for(optind-- ;optind < argc && *argv[optind] != '-'; optind++){
+                for(optind = start_optind ;i<dim_arg_exclude; optind++, i++){
                       //ogni argv[optind] rappresenta un estenzione da escludere
+                      dim_ext = 1+strlen(argv[optind]);
+                      arg_exclude[i] = malloc(dim_ext);
                       if(argv[optind][0] == '.') strcpy(arg_exclude[i], argv[optind]+1);
                       else strcpy(arg_exclude[i], argv[optind]);
-                      if (++i == intit_arg_exclude) { // realloc (*arg_exclude)
-                          void *tmptr = realloc (arg_exclude, 2 * intit_arg_exclude * sizeof *arg_exclude);
-                          if (!tmptr) {
-                            printf("\033[1;31m");printf("ERRORE:");printf("\033[0m");
-                            fprintf(stderr, " realloc() per arg_exclude in main.c:\n\t%s\n",
-                              strerror(errno));
-                            printf("\033[1;35m");
-                            printf("Sono state registrate soltanto %d righe per arg_exclude\n", i);
-                            printf("\033[0m");
-                              break;  // non leggere più e mantieni ciò che hai letto
-                          }
-                          arg_exclude = tmptr;  //assegna il puntatore aggiornato ad arg_exclude
-                          intit_arg_exclude *= 2; //aggiorna dimensione degli elementi di arg_exclude
-                      }
                 }
-                dim_arg_exclude = i; //finale massimo #elementi di arg_exclude
               break;
             case 'r':
                 arg_report = optarg;
@@ -111,7 +106,9 @@ int main (int argc, char **argv) {
                 /* getopt_long_only already printed an error message. */
               break;
             default:
-                abort();
+                if (arg_exclude)
+                  freePtP(arg_exclude, dim_arg_exclude);
+              abort();
         }
     }
 
@@ -124,14 +121,25 @@ int main (int argc, char **argv) {
         else break;
     }
 
-    if(arg_words && arg_input) {    //generazione report
-      if(!generaReport()) return EXIT_FAILURE;
+    //current working directory
+    size_cwd = 20;
+    char *buf_cwd = malloc(size_cwd);
+    currentDir = getcwd(buf_cwd, size_cwd);
 
-      if (arg_exclude) {
-        free(arg_exclude);
-        arg_exclude = NULL;
-      }
+    while (currentDir == NULL && errno == ERANGE) {
+        size_cwd *= 2;
+        buf_cwd = realloc(buf_cwd, size_cwd);
+        currentDir = getcwd(buf_cwd, size_cwd);
     }
+
+    if(arg_words && arg_input)   //generazione report
+        if(!generaReport()) {
+          if(arg_exclude) freePtP(arg_exclude, dim_arg_exclude);
+          free(buf_cwd);
+          buf_cwd = NULL;
+          return EXIT_FAILURE;
+        }
+    if(arg_exclude) freePtP(arg_exclude, dim_arg_exclude);
 
     if(arg_report && arg_show) {
         printf("\n-- ANALISI REPORT\n");
@@ -139,12 +147,20 @@ int main (int argc, char **argv) {
         if(arg_file) {
           printf("\nLista posizioni dove la parola <%s> occorre nel file <%s>\n",
             arg_show, arg_file);
-          if(!analisiListOcc()) return EXIT_FAILURE;
+          if(!analisiListOcc()) {
+            free(buf_cwd);
+            buf_cwd = NULL;
+            return EXIT_FAILURE;
+          }
         }
         else {
           printf("\nLista dei file dove occorre almeno <%d> volte la parola <%s>\n",
             oInput, arg_show);
-          if (!analisiListPaths()) return EXIT_FAILURE;
+          if (!analisiListPaths()) {
+            free(buf_cwd);
+            buf_cwd = NULL;
+            return EXIT_FAILURE;
+          }
         }
     }
 
@@ -152,7 +168,8 @@ int main (int argc, char **argv) {
       printf("\033[1;31m");printf("ERRORE:");printf("\033[0m");
       printf(" sulla scelta delle opzioni, digitare -help per info sui comandi\n");
     }
-
+    free(buf_cwd);
+    buf_cwd = NULL;
     return EXIT_SUCCESS;
 }
 
@@ -205,7 +222,7 @@ void help() {
   exit(0);
 }
 
-void crediti() {
+void info() {
   printf("\033[01;36m");
 	printf("\n\n\t\t\t\t\t  FIND PROGRAM\n\n"); printf("\033[0m");
 	printf("- membri del gruppo :  Besjan Veizi, Mariano Sabatino\n");

@@ -1,7 +1,9 @@
-#ifndef GENERAL_H_
-#define GENERAL_H_
+#ifndef FIND_H_
+#define FIND_H_
 
-extern char (*arg_exclude)[10];  //-e argument (PtA of chars)
+extern char * currentDir;
+extern int size_cwd;
+extern char **arg_exclude;  //-e argument
 extern int dim_arg_exclude;
 extern int verbose_flag;  //-v argument
 

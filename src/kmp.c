@@ -2,12 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "wf_getter.h"
 #include "kmp.h"
-
-/*****////////////////////*****/
-/*****    KMP Algorithm   *****/
-/*****////////////////////*****/
 
 static const char low_accenti[] = {"àèìòùáéíóú"};
 static const char up_accenti[] = {"ÀÈÌÒÙÁÉÍÓÚ"};
@@ -30,7 +25,7 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
     int i = 0;    // indice dei caratteri della riga del file
     int j = 0;    // indice dei caratteri della parola
     int riga = 0;   // indice riga del file
-    char rowFile[MAXC];   //riga file
+    char rowFile[2049];   //riga file
     int sub_str = 0;    // caratteri accentati nella riga del file
     int sub_par = 0;    // caratteri accentati nella parola
     int sub_tot = 0;    // sub_str - sub_par
@@ -56,7 +51,7 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
     sub_par /= 2;
 
     // calcola KMP
-    while (fgets (rowFile, MAXC, file)) {
+    while (fgets (rowFile, 2049, file)) {
 
         if((strcmp(rowFile,"\n") == 0) || strcmp(rowFile,"\r\n") == 0) {
           riga++;
@@ -65,6 +60,7 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
 
         char * ptr = rowFile;
         for (; *ptr && *ptr != '\n' && *ptr != '\r'; ptr++) {} //elimina '\n'
+
         *ptr = 0;
 
         S_SIZE = strlen(rowFile);
@@ -99,7 +95,6 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
         riga++;
         sub_str = 0;
     }
-
     fclose(file);
     free(lps);
     lps = NULL;
@@ -187,9 +182,9 @@ void printOcc(struct Occurrencies* n) {
     }
 }
 
-void fprintOcc(FILE* wr, struct Occurrencies* n) {
+void fprintOcc(FILE** wr, struct Occurrencies* n) {
     while (n != NULL) {
-        fprintf(wr, "%d %d\r\n", n->n_row, n->n_char);
+        fprintf(*wr, "%d %d\r\n", n->n_row, n->n_char);
         n = n->next;
     }
 }

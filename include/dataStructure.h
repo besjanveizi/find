@@ -1,30 +1,28 @@
 #ifndef DS_H_
 #define DS_H_
 
-#include "wf_getter.h"    // MAXC
-
 struct Word{
-  char word[MAXC];
+  char *word;
   int tot_occurr;
   struct File **p_file;
 };
 struct File{
-  char path[MAXC];
+  char *path;
   int occurr;
   struct Occurrencies* head;
 };
 
 
 //funzione che crea la Struttura Dati
-struct Word ** createDS(char (*)[MAXC], int, char (*)[MAXC], int);
+struct Word ** createDS(char **, int, char **, int, int, int);
 
 // funzione di stampa della Struttura Dati su terminale
 void printDS(struct Word **, int, int);
 // funzione di stampa della Struttura Dati su file di report
-int fprintDS(struct Word **, int, int, char *);
+void fprintDS(struct Word **, int, int, FILE**);
 
 //funzione di deallocazione della Struttura Dati
-void deallocateDS(struct Word **, char (*)[MAXC], int, char (*)[MAXC], int);
+void deallocateDS(struct Word **, char **, int, char **, int);
 
 // funzione di ordinamento della Struttura Dati
 int ordinaDS(struct Word **, int, int);
