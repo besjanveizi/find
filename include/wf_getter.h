@@ -1,6 +1,9 @@
 #ifndef WF_GETTER_H_
 #define WF_GETTER_H_
 
+// file di appoggio per tutti i percorsi da visitare
+extern const char *appFile;
+
 // funzione che restituisce le righe di un file con un doppio puntatore a char
 char ** fileToPtP(const char*, int *, int *);
 
@@ -17,5 +20,8 @@ void printPtP(char **, int);
 
 // funzione per deallocare un PtP
 void freePtP(char **, int);
+
+// funzione per eliminare il file di appoggio appFile
+void rm_appFile(void);
 
 #endif

@@ -4,7 +4,7 @@
 struct Word{
   char *word;
   int tot_occurr;
-  struct File **p_file;
+  struct File **f_da;
 };
 struct File{
   char *path;
@@ -12,7 +12,7 @@ struct File{
   struct Occurrencies* head;
 };
 
-
+extern _Bool duplicato;
 //funzione che crea la Struttura Dati
 struct Word ** createDS(char **, int, char **, int, int, int);
 
@@ -25,11 +25,6 @@ void fprintDS(struct Word **, int, int, FILE**);
 void deallocateDS(struct Word **, char **, int, char **, int);
 
 // funzione di ordinamento della Struttura Dati
-int ordinaDS(struct Word **, int, int);
-// funzione comparatore per l'ordinamento alfabetico delle parole
-int compareWords(const void *, const void *);
-// funzione comparatore per l'ordinamento decrescente delle occorrenze
-// (alfabetico dei file in caso di uguale occorrenza)
-int compareFiles(const void *, const void *);
+void ordinaDS(struct Word **, int, int);
 
 #endif

@@ -2,59 +2,44 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <stdbool.h>    // occPresente
+#include <stdbool.h>          // occPresente
 #include <time.h>
-#include "find.h"     // menù arguments
+#include "find.h"             // menù arguments
 #include "report.h"
-#include "dataStructure.h"    // createDS(), fprintDS(), ordinaDS(), deallocateDS()
-#include "wf_getter.h"     // isAbsolute(), getAbsolute(), fileToPtP(), freePtP(), findPathsPtP()
-#include "kmp.h"    // lowerCaseStr()
+#include "dataStructure.h"    // createDS(), fprintDS(), ordinaDS(), deallocateDS(), duplicato
+#include "wf_getter.h"        // tutte le funzioni esterne ed appFile
+#include "kmp.h"              // lowerCaseStr()
 
+// dimensione minima di lettura di una linea da un file (1 carattere)
+static int max_char = 1;
 
-static int max_char = 50;
+// funzione per ottenere percorso assoluto degli argomenti <filepath> nei comandi di input dal modulo find
+static char * checkNgetAbs(char *);
+
+// percorsi assoluti degli argomenti <filepath> nei comandi di input dal modulo find
 static char *wordsFile = NULL;
 static char *inputFile = NULL;
 static char *outputFile = NULL;
 static char *reportFile = NULL;
 static char *selectedFile = NULL;
 
+// report file ptp
 static char **rowFile;
 
-static char* searchWord;
-static char* searchFile;
-static char* searchOcc;
-static char* searchTot;
+//funzione per ottenere i valori nel report file
+static char * getSubstr(char *, int);
 
+//valori nel report file
+static char* searchWord; // riga "WORD ..."
+static char* searchTot;  // riga "TOTAL ..."
+static char* searchFile; // riga "FILE ..."
+static char* searchOcc;  // riga "OCCURRENCES ..."
+
+// bytes buffer per strncmp() nell ANALISI
 static int l_Wbuf = strlen("WORD");
 static int l_Tbuf = strlen("TOTAL");
 static int l_Fbuf = strlen("FILE");
 static int l_Obuf = strlen("OCCURRENCES");
-
-const char *appFile = "append.txt";
-static char * getSubstr(char *, int);
-
-// funzione per eliminare un file
-static void rmFile(const char *);
-
-static char * checkNgetAbs(char *);
-
-char * checkNgetAbs(char * str) {
-  char * abs = NULL;
-  int optimal_size = 1 + strlen(str);
-  if(!isAbsolute(str)) {
-      optimal_size += size_cwd;
-      abs = getAbsolute(str, optimal_size);
-      if(abs[0] == '\0') {
-          free(abs);
-          return NULL;
-      }
-  }
-  else {
-    abs = malloc(optimal_size);
-    strcpy(abs, str);   // isAbsolute()
-  }
-  return abs;
-}
 
 int generaReport() {
   clock_t time_begin;
@@ -108,6 +93,7 @@ int generaReport() {
     freePtP(ptp_f, m);
     free(wordsFile);
     free(inputFile);
+    rm_appFile();
     return 0;
   }
 
@@ -121,72 +107,73 @@ int generaReport() {
     freePtP(ptp_f, m);
     free(wordsFile);
     free(inputFile);
-    rmFile(appFile);
+    rm_appFile();
     return 0;
   }
   int maxc_f = max_char;
 
   //rimuovi file di appoggio dove c'erano parsed files
-  rmFile(appFile);
+  rm_appFile();
   time_end = clock();
   time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
   if(verbose_flag)
     printf(" -- Visitati tutti i file specificati in '%s' (%lf)\n", inputFile, time_spent);
 
   //DLA(dynamic linear array) of pointers of n structs Word
-  struct Word **w_dla = NULL;
+  struct Word **w_da = NULL;
   //crea DLA
-  if(!(w_dla = createDS(ptp_w, n, ptp_f, m, maxc_w, maxc_f))) {
+  if(!(w_da = createDS(ptp_w, n, ptp_f, m, maxc_w, maxc_f))) {
     free(wordsFile);
     free(inputFile);
-    deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+    deallocateDS(w_da, ptp_w, n, ptp_f, m);
     return 0;
   }
   // ordina Data Structure
   time_begin = clock();
-  if(!ordinaDS(w_dla, n, m)) {
+  ordinaDS(w_da, n, m);
+  if(duplicato) {  //controlla se ci sono elementi duplicati tra le parole o i percorsi
     free(wordsFile);
     free(inputFile);
-    deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+    deallocateDS(w_da, ptp_w, n, ptp_f, m);
     return 0;
   }
   time_end = clock();
   time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
   if(verbose_flag) printf(" -- Data Structure Ordinata (%lf)\n", time_spent);
-
   if(arg_output) {
     outputFile = checkNgetAbs(arg_output);
     if(!outputFile) {
       printf("-o | --output argument failure\n");
       free(wordsFile);
       free(inputFile);
-      deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+      deallocateDS(w_da, ptp_w, n, ptp_f, m);
       return 0;
     }
     FILE* oF = fopen (outputFile, "w+");    //file di output per report
     if(!oF) {
         printf("\033[1;31m");printf("ERRORE [report.c -> createDS()]:");printf("\033[0m");
-        fprintf (stderr, " fopen(%s)\n\t%s\n", outputFile, strerror(errno));
+        printf(" fallimento fopen(%s)\n", outputFile);
+        fprintf (stderr, "%s\n", strerror(errno));
         free(wordsFile);
         free(inputFile);
         free(outputFile);
-        deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+        deallocateDS(w_da, ptp_w, n, ptp_f, m);
         return 0;
     }
     printf("Output filepath: '%s'\n", outputFile);
-    fprintDS(w_dla, n, m, &oF);
+    fprintDS(w_da, n, m, &oF);
     fclose(oF);
-    printf("[ REPORT GENERATO ]\n");
+    printf("\033[0;32m");printf("[ REPORT GENERATO ]\n");printf("\033[0m");
   }
 
-  // printDS(w_dla, n, m);   // stampa DS su terminale
+  // if(verbose_flag) printDS(w_da, n, m);   // stampa DS su terminale
 
   free(wordsFile);
   free(inputFile);
   free(outputFile);
 
   //dealloca Data Structure
-  deallocateDS(w_dla, ptp_w, n, ptp_f, m);
+  deallocateDS(w_da, ptp_w, n, ptp_f, m);
   return 1;
 }
 
@@ -276,7 +263,7 @@ int analisiListOcc() {
 
   selectedFile = checkNgetAbs(arg_file);
   if(!selectedFile) {
-    printf("-r | --report argument failure\n");
+    printf("-f | --file argument failure\n");
     free(reportFile);
     return 0;
   }
@@ -287,9 +274,9 @@ int analisiListOcc() {
     return 0;
   }
   printf("Report filepath: '%s'\n", reportFile);
+  printf("Selected file: '%s'\n", selectedFile);
 
   lowerCaseStr(arg_show);   // trasforma parola in minuscolo
-
   for(; i < n_rows; i++) {
       if(strncmp(rowFile[i], "WORD", l_Wbuf) != 0) continue;
       else {
@@ -352,11 +339,22 @@ int analisiListOcc() {
   return 1;
 }
 
-void rmFile(const char * filename) {
-    char cmd[120];
-    strcpy(cmd, "rm ");
-    strcat(cmd, filename);
-    system(cmd);
+char * checkNgetAbs(char * str) {
+  char * abs = NULL;
+  int optimal_size = 1 + strlen(str);
+  if(!isAbsolute(str)) {
+      optimal_size += size_cwd;
+      abs = getAbsolute(str, optimal_size);
+      if(abs[0] == '\0') {
+          free(abs);
+          return NULL;
+      }
+  }
+  else {
+    abs = malloc(optimal_size);
+    strcpy(abs, str);   // isAbsolute()
+  }
+  return abs;
 }
 
 char * getSubstr(char * str, int buffer) {
