@@ -8,8 +8,9 @@
 #include <unistd.h>     // lstat()
 #include <dirent.h>     //opendir() & readdir()
 #include "find.h"       //verbose_flag, arg_exclude, dim_arg_exlude
-#include "report.h"     //appFile
 #include "wf_getter.h"
+
+const char *appFile = "append.txt";
 
 // funzione che ottiene tutti i file (rispettando il flag di ricorsione) e li
 // scrive in ordine di visita in appFile
@@ -34,7 +35,8 @@ char ** fileToPtP(const char* filename, int *n, int *max_char){
 
     if (!fp) {
         printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
-        fprintf(stderr, " fopen(%s)\n\t%s\n", filename, strerror(errno));
+        printf(" fallimento fopen(%s)\n", filename);
+        fprintf(stderr, "%s\n", strerror(errno));
         return NULL;
     }
 
@@ -54,16 +56,32 @@ char ** fileToPtP(const char* filename, int *n, int *max_char){
     *max_char = l_row_max;
 
     if (!(array = malloc (n_rows * sizeof *array))) { // alloca n_rows puntatori
-        fprintf(stderr, "ERRORE malloc() %d puntatori per '%s' in fileToPtP():\n\t%s\n",
-          n_rows, filename, strerror(errno));
+        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
+        printf(" fallimento allocazione %d puntatori per '%s'\n", n_rows, filename);
+        fprintf(stderr, "%s\n", strerror(errno));
         return NULL;
     }
     for (; m < n_rows; m++) {
       if(!(array[m]= malloc(*max_char))) {
-        fprintf(stderr, "ERRORE malloc() %d-esimo puntatore [%d]:\n\t%s\n", m + 1,
-          *max_char, strerror(errno));
+        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
+        printf(" fallimento allocazione %d-esimo puntatore [%d]\n", m + 1, *max_char);
+        fprintf(stderr, "%s\n", strerror(errno));
         return NULL;
       }
+    }
+
+    if(m==0) {    //file vuoto, nessun elemento nel PtP
+      if(strcmp(filename, appFile) != 0) {
+          printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+          printf(" non è stato possibile leggere alcuna riga dal file '%s'\n", filename);
+          printf("Controlla che sia un file non vuoto\n");
+      }
+      else {
+        printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+        printf(" nessun file trovato per la ricerca\n");
+        printf("Controlla il file per l'argomento -i oppure gli argomenti per -e\n");
+      }
+      return NULL;
     }
 
     //reset file pointer a inizio file e indice PtP
@@ -80,19 +98,6 @@ char ** fileToPtP(const char* filename, int *n, int *max_char){
         m++;
     }
     fclose (fp);
-    if(m==0) {    //file vuoto, nessun elemento nel PtA
-      if(strcmp(filename, appFile) != 0) {
-          printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
-          printf(" non è stato possibile leggere alcuna riga dal file '%s'\n", filename);
-          printf("Controlla che sia un file non vuoto\n");
-      }
-      else {
-        printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
-        printf(" nessun file trovato per la ricerca\n");
-        printf("Controlla il file per l'argomento -i oppure gli argomenti per -e\n");
-      }
-      return NULL;
-    }
     *n = m;
     return array;
 }
@@ -102,7 +107,8 @@ int findPathsPtP(char **files, int n) {
     FILE* appendFile = fopen (appFile, "a");    //file di appoggio
     if(!appendFile) {
         printf("\033[1;31m");printf("ERRORE [wf_getter.c -> findPathsPtP()]:");printf("\033[0m");
-        fprintf (stderr, " fopen(%s):\n\t%s\n", appFile, strerror(errno));
+        printf(" fallimento fopen(%s)\n", appFile);
+        fprintf (stderr, "%s\n", strerror(errno));
         return 0;
     }
 
@@ -110,7 +116,7 @@ int findPathsPtP(char **files, int n) {
     for (int i = 0; i < n; i++) {
         char *ptr = files[i];
         int l = strlen(ptr);
-        int optimal_size = 1 + strlen(files[i]);
+        int optimal_size = 1 + l;
         char * str_app  = NULL;
 
         //check for recursive tag
@@ -199,7 +205,6 @@ char * getAbsolute(char *str, int optimal_size){
 		}
 
     if(absPath[strlen(absPath)-1] == '/') absPath[strlen(absPath)-1] = '\0';
-    //printf("ABS: '%s'\n", absPath);
     return absPath;
 }
 
@@ -220,15 +225,14 @@ int getPaths(char *pathname, int rf, FILE** appendFile, int optimal_size) {
             printf("\033[1;35m");printf("ALERT:\n");printf("\033[0m");
             printf("\tIl programma gestisce solo cartelle e file regolari\n");
             printf("\tIl path '%s' verrà ignorato per generazione del report\n",
-            pathname);
+              pathname);
         }
         return 1;
     }
     else {
-        printf("\033[1;31m");
-        printf("ERRORE [wf_getter.c -> getPaths()]");
-        printf("\033[0m\n");
-        fprintf (stderr, "%s:\t%s\n", pathname, strerror(errno));
+        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> getPaths()]:");printf("\033[0m");
+        printf(" path '%s' in --input argument file\n", pathname);
+        fprintf (stderr, "%s\n", strerror(errno));
         return 0;
     }
 }
@@ -239,8 +243,8 @@ int checkDir(char *dirPath, int rf, FILE** appendFile, int optimal_size) {
 
     if (!(dir = opendir(dirPath))){
         printf("\033[1;31m");printf("ERRORE [wf_getter.c -> checkDir()]:");printf("\033[0m");
-        fprintf (stderr, " opendir(%s)\n\t%s\n", dirPath,
-          strerror(errno));
+        printf(" fallimento opendir(%s)\n", dirPath);
+        fprintf (stderr, "%s\n", strerror(errno));
         return 0;
     }
     while ((entry = readdir(dir)) != NULL) {
@@ -255,13 +259,11 @@ int checkDir(char *dirPath, int rf, FILE** appendFile, int optimal_size) {
             int opt = optimal_size;
             int dir_l = strlen(dirPath);
             int newDir_l = strlen(entry->d_name);
-            //printf("FROM dir [%d]: '%s'\n", dir_l, dirPath);
             if((opt - dir_l - newDir_l - 1) < 0) opt = opt + newDir_l + 1;
             path = malloc(opt);
             strcpy(path, dirPath);
             strcat(path, "/");
             strcat(path, entry->d_name);
-            //printf("TO dir [%d]: '%s'\n", (int)strlen(path), path);
             checkDir(path, rf, appendFile, opt);
         }
         else if(entry->d_type == DT_REG) {
@@ -309,7 +311,7 @@ int isExcluded(char * ext) {
 
 void printPtP(char **arr, int n){
   for (int i = 0; i < n;) {
-    printf ("'%s' ", arr[i]);
+    printf ("'%s'", arr[i]);
     i++;
     if(i<n) printf("| ");
   }
@@ -320,11 +322,18 @@ void freePtP(char **ptp, int n) {
   if(ptp){
       for (int i = 0; i < n; i++){
             if(ptp[i]){
-                free (ptp[i]); //free files
+                free (ptp[i]);
                 ptp[i] = NULL;
             }
       }
       free(ptp);
       ptp = NULL;
   }
+}
+
+void rm_appFile(void) {
+    char cmd[120];
+    strcpy(cmd, "rm ");
+    strcat(cmd, appFile);
+    system(cmd);
 }

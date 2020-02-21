@@ -1,19 +1,21 @@
 #ifndef FIND_H_
 #define FIND_H_
 
-extern char * currentDir;
-extern int size_cwd;
-extern char **arg_exclude;  //-e argument
-extern int dim_arg_exclude;
-extern int verbose_flag;  //-v argument
+extern char * currentDir;   // current working directory
+extern int size_cwd;        // dimesione necessaria per allocare currentDir
 
-extern char *arg_words;   //-w argument
-extern char *arg_input;   //-i argument
-extern char *arg_output;  //-o argument
+extern char **arg_exclude;  // --exclude argument
+extern int dim_arg_exclude; // #arguments of --exclude
 
-extern char *arg_report;  //-r argument
-extern char *arg_show;    //-s argument
-extern char *arg_file;    //-f argument
-extern int oInput;        //optional -s sub-argument
+extern int verbose_flag;    // --verbose argument
+
+extern char *arg_words;     // --words argument
+extern char *arg_input;     // --input argument
+extern char *arg_output;    // --output argument
+
+extern char *arg_report;    // --report argument
+extern char *arg_show;      // --show argument
+extern char *arg_file;      // --file argument
+extern int oInput;          // optional --show sub-argument <n>
 
 #endif

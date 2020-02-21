@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>   // getopt_long_only()
+#include <getopt.h>     // getopt_long_only()
 #include <unistd.h>     // getcwd()
 #include "find.h"
-#include "report.h"   // generaReport(), analisiListPaths(), analisiListOcc()
-#include "wf_getter.h"    //freePtP()
+#include "report.h"     // generaReport(), analisiListPaths(), analisiListOcc()
+#include "wf_getter.h"  //freePtP()
 
 char * currentDir;
 int size_cwd;
@@ -80,15 +80,16 @@ int main (int argc, char **argv) {
                   dim_arg_exclude++;
                 }
                 if (!(arg_exclude = malloc (dim_arg_exclude * sizeof *arg_exclude))) {
-                    printf("\033[1;31m");printf("ERRORE:");printf("\033[0m");
-                    fprintf(stderr, " malloc() per arg_exclude in main.c:\n\t%s\n",
-                      strerror(errno));
+                    printf("\033[1;31m");printf("ERRORE [main.c]:");printf("\033[0m");
+                    printf(" fallimento allocazione per arg_exclude\n");
+                    fprintf(stderr, "%s\n", strerror(errno));
                     return EXIT_FAILURE;
                 }
                 for(optind = start_optind ;i<dim_arg_exclude; optind++, i++){
                       //ogni argv[optind] rappresenta un estenzione da escludere
                       dim_ext = 1+strlen(argv[optind]);
                       arg_exclude[i] = malloc(dim_ext);
+                      // elimina il . iniziale se viene inserito
                       if(argv[optind][0] == '.') strcpy(arg_exclude[i], argv[optind]+1);
                       else strcpy(arg_exclude[i], argv[optind]);
                 }

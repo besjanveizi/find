@@ -1,8 +1,6 @@
 #ifndef REPORT_H_
 #define REPORT_H_
 
-extern const char *appFile;
-
 // GENERAZIONE del REPORT
 int generaReport();
 // ANALISI del REPORT
