@@ -55,22 +55,7 @@ char ** fileToPtP(const char* filename, int *n, int *max_char){
     }
     *max_char = l_row_max;
 
-    if (!(array = malloc (n_rows * sizeof *array))) { // alloca n_rows puntatori
-        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
-        printf(" fallimento allocazione %d puntatori per '%s'\n", n_rows, filename);
-        fprintf(stderr, "%s\n", strerror(errno));
-        return NULL;
-    }
-    for (; m < n_rows; m++) {
-      if(!(array[m]= malloc(*max_char))) {
-        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
-        printf(" fallimento allocazione %d-esimo puntatore [%d]\n", m + 1, *max_char);
-        fprintf(stderr, "%s\n", strerror(errno));
-        return NULL;
-      }
-    }
-
-    if(m==0) {    //file vuoto, nessun elemento nel PtP
+    if(n_rows==0) {    //file vuoto, nessun elemento nel PtP
       if(strcmp(filename, appFile) != 0) {
           printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
           printf(" non è stato possibile leggere alcuna riga dal file '%s'\n", filename);
@@ -79,9 +64,27 @@ char ** fileToPtP(const char* filename, int *n, int *max_char){
       else {
         printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
         printf(" nessun file trovato per la ricerca\n");
-        printf("Controlla il file per l'argomento -i oppure gli argomenti per -e\n");
+        printf("Controlla il file per l'argomento --input oppure gli argomenti per --exclude\n");
       }
+      fclose (fp);
       return NULL;
+    }
+
+    if (!(array = malloc (n_rows * sizeof *array))) { // alloca n_rows puntatori
+        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
+        printf(" fallimento allocazione %d puntatori per '%s'\n", n_rows, filename);
+        fprintf(stderr, "%s\n", strerror(errno));
+        fclose (fp);
+        return NULL;
+    }
+    for (; m < n_rows; m++) {
+      if(!(array[m]= malloc(*max_char))) {
+        printf("\033[1;31m");printf("ERRORE [wf_getter.c -> fileToPtP()]:");printf("\033[0m");
+        printf(" fallimento allocazione %d-esimo puntatore [%d]\n", m + 1, *max_char);
+        fprintf(stderr, "%s\n", strerror(errno));
+        fclose (fp);
+        return NULL;
+      }
     }
 
     //reset file pointer a inizio file e indice PtP
@@ -135,7 +138,6 @@ int findPathsPtP(char **files, int n) {
             str_app=getAbsolute(files[i], optimal_size);
             if(str_app[0] == '\0') {
                 fclose(appendFile);
-                free(str_app);
                 return 0;
             }
         }
@@ -193,7 +195,8 @@ char * getAbsolute(char *str, int optimal_size){
 		    cUp = cSlash - (cPunto/2);
 		    if(cUp < 0){
             printf("\033[1;31m");printf("ERRORE [wf_getter.c]:");printf("\033[0m");
-						printf(" getAbsolute(%s)\n\tImpossibile risalire alla cartella\n", str);
+						printf(" getAbsolute(%s)\nImpossibile risalire al file o alla cartella\n", str);
+            free(absPath);
 						return "";
 				}
 

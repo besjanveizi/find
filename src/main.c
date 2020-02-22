@@ -116,7 +116,7 @@ int main (int argc, char **argv) {
     // check non-option ARGV-elements for oInput for analisiListPaths()
     while (optind < argc) {
         char *end;
-        int tmp = strtol(argv[optind], &end, 10);
+        int tmp = (int)strtol(argv[optind], &end, 10);
         if (tmp>1) oInput=tmp;
         if(++optind < argc) continue;
         else break;
@@ -202,21 +202,21 @@ void help() {
   printf("\nFLAG: ");
   printf("[ -v ] | [ --verbose ]  : flag verbose\n\n");
   printf("\033[0;34m"); printf("Esempi di utilizzo dei comandi:\n\n"); printf("\033[0m");
-  printf("1) Genera il report <out.txt> nella cartella ./result dalle parole contenute in <words.txt> sui file specificati\n");
-  printf("   con path relativo o assoluto nel file <in.txt> escludendo file .pdf, .epub e .doc.\n");
+  printf("1) Genera il report <out.txt> dalle parole contenute in <words.txt> sui file specificati\n");
+  printf("   con path relativo o assoluto nel file <in.txt> escludendo file .pdf e .jpg.\n");
   printf("   Mostra estensivamente il processo di analisi.\n");
   printf("\033[0;32m");
-	printf("\t ./find --words words.txt --input ./in.txt --output result/out.txt --exclude pdf epub doc -verbose\n\n");
+	printf("\t ./find --words words.txt --input ./in.txt --output out.txt --exclude pdf jpg --verbose\n\n");
   printf("\033[0m");
-  printf("2) Analizza il report contenuto nel file <out.txt> della cartella ./result, stampando la lista dei file dove\n");
+  printf("2) Analizza il report contenuto nel file <out.txt>, stampando la lista dei file dove\n");
   printf("   occorre almeno <3> volte la parola <aria>\n");
   printf("\033[0;32m");
-	printf("\t ./find --report ./result/out.txt --show aria 3\n\n");
+	printf("\t ./find --report ./out.txt --show aria 2\n\n");
   printf("\033[0m");
-  printf("3) Analizza il report contenuto nel file <out.txt> della cartella ./result, stampando tutte le posizioni\n");
-  printf("   dove la parola <aria> occorre nel file <5maggio.txt> contenuto nella cartella ./files\n");
+  printf("3) Analizza il report contenuto nel file <out.txt>, stampando tutte le posizioni\n");
+  printf("   dove la parola <aria> occorre nel file <5maggio.txt> contenuto nella cartella ./files/es\n");
   printf("\033[0;32m");
-  printf("\t ./find --report ./result/out.txt --show aria --file files/5maggio.txt\n");
+  printf("\t ./find --report out.txt --show aria --file files/es/5maggio.txt\n");
   printf("\033[0m");
   printf("\n\nN.B.\n");
   printf("L'argomento <filepath> può essere sia relativo che assoluto.\n\n");
@@ -234,7 +234,7 @@ void info() {
   printf("\t\t   un gruppo di file utilizzando l'Algoritmo di Knuth-Morris e Pratt.\n");
   printf("\t\t   Ad ogni esecuzione l'applicazione produrrà in output la lista\n");
   printf("\t\t   dei file analizzati con le occorrenze della stringa nel testo\n");
-  printf("\t\t   insieme alle informazioni riguardante la posizioni della stesse.\n");
+  printf("\t\t   insieme alle informazioni riguardanti le posizioni della stesse.\n");
   printf("\t\t   Le stesse informazioni prodotte in output potranno essere salvate\n");
   printf("\t\t   su di un file esterno su cui si possono eseguire 2 operazioni di analisi:\n");
   printf("\t\t     - Stampare la lista dei file dove occorre almeno <n> volte la parola <word>\n");
