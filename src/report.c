@@ -48,8 +48,8 @@ int generaReport() {
 
   int n = 0;    // dimensione ptp_w
   int m = 0;    // dimensione ptp_f
-  char **ptp_w = NULL; // puntatore di array di char [MAXC] per parole
-  char **ptp_f = NULL; // puntatore di array di char [MAXC] per i percorsi dei files
+  char **ptp_w = NULL; // array di puntatori a char per parole
+  char **ptp_f = NULL; // array di puntatori a char per i percorsi dei files
 
   wordsFile = checkNgetAbs(arg_words);
   if(!wordsFile) {
@@ -209,9 +209,10 @@ int analisiListPaths() {
                 j = i + 1; // check "TOTAL"
                 searchTot = getSubstr(rowFile[j], l_Tbuf);
                 // converti searchTot in int base 10
-                totOcc = strtol(searchTot, &end, 10);
+                totOcc = (int)strtol(searchTot, &end, 10);
                 if(totOcc == 0) {
-                    printf("Non c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
+                    printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+                    printf("\nNon c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
                       searchWord);
                     freePtP(rowFile, n_rows);
                     free(reportFile);
@@ -223,7 +224,7 @@ int analisiListPaths() {
                     searchFile = getSubstr(rowFile[j], l_Fbuf);
                     j++; // la riga dopo "FILE" è *sempre* "OCCURRENCES"
                     searchOcc = getSubstr(rowFile[j], l_Obuf); // get occorrenza from rowFile[j]
-                    int oFile = strtol(searchOcc, &end, 10); // converti searchOcc in int base 10
+                    int oFile = (int)strtol(searchOcc, &end, 10); // converti searchOcc in int base 10
                     if(oFile >= oInput) {
                       printf("\tpath: '%s'\tOCC: %d\n", searchFile, oFile); //controllo occorrenza
                       occPresente = true;
@@ -232,15 +233,19 @@ int analisiListPaths() {
                     j = j + oFile; //skip riga "OCCURRENCES"
 
                 }
-                if(!occPresente) printf("Tuttavia non ci sono occorrenze pari/maggiori di '%d' tra i file specificati\n",
+                if(!occPresente) {
+                  printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+                  printf("\nNon ci sono occorrenze pari/maggiori di '%d' tra i file specificati\n",
                   oInput);
+                }
                 freePtP(rowFile, n_rows);
                 free(reportFile);
                 return 1; // ho stampato tutte le occorrenze per ciascun path per parola
             }
         }
     }
-    printf("La parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
+    printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+    printf("\nLa parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
     freePtP(rowFile, n_rows);
     free(reportFile);
     return 1;
@@ -285,9 +290,10 @@ int analisiListOcc() {
               j = i + 1; // check "TOTAL"
               searchTot = getSubstr(rowFile[j], l_Tbuf);
               // converti searchTot in int base 10
-              int tot = strtol(searchTot, &end, 10);
+              int tot = (int)strtol(searchTot, &end, 10);
               if(tot == 0) {
-                  printf("Non c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
+                  printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+                  printf("\nNon c'è alcuna occorrenza della parola '%s' tra i file specificati\n",
                     searchWord);
                   freePtP(rowFile, n_rows);
                   free(reportFile);
@@ -303,7 +309,7 @@ int analisiListOcc() {
                       //trovato selectedFile
                       k=j+1;
                       searchOcc = getSubstr(rowFile[k], l_Obuf);
-                      countOcc = strtol(searchOcc, &end, 10);
+                      countOcc = (int)strtol(searchOcc, &end, 10);
                       k++;
                       printf("La parola '%s' si trova %d volte nel file %s nelle seguenti posizioni:\n",
                         searchWord, countOcc, searchFile);
@@ -320,10 +326,11 @@ int analisiListOcc() {
                   // not the file, skip occurrences
                   j++;
                   searchOcc = getSubstr(rowFile[j], l_Obuf);
-                  skipOcc = strtol(searchOcc, &end, 10);
+                  skipOcc = (int)strtol(searchOcc, &end, 10);
                   j += skipOcc;
               }
-              printf("Il path '%s' non era presente nel file dei percorsi, perciò non si trova nel report\n",
+              printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+              printf("\nIl path '%s' non era presente nel file dei percorsi, perciò non si trova nel report\n",
                 selectedFile);
               freePtP(rowFile, n_rows);
               free(reportFile);
@@ -332,7 +339,8 @@ int analisiListOcc() {
           }
       }
   }
-  printf("La parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
+  printf("\033[1;35m");printf("WARNING:");printf("\033[0m");
+  printf("\nLa parola '%s' non era presente nel file delle parole, perciò non si trova nel report\n", arg_show);
   freePtP(rowFile, n_rows);
   free(reportFile);
   free(selectedFile);
@@ -345,10 +353,7 @@ char * checkNgetAbs(char * str) {
   if(!isAbsolute(str)) {
       optimal_size += size_cwd;
       abs = getAbsolute(str, optimal_size);
-      if(abs[0] == '\0') {
-          free(abs);
-          return NULL;
-      }
+      if(abs[0] == '\0') return NULL;
   }
   else {
     abs = malloc(optimal_size);

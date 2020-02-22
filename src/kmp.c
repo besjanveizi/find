@@ -20,12 +20,13 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
 
     struct Occurrencies* head = NULL;
     struct Occurrencies** ptpCodaRef= &head; // ultimo puntatore a nodo nella lista
+    int BUFFER = 2049;    //buffer di lettura (rowFile & fgets())
 
     int tot = 0;    //totali occorrenze
     int i = 0;    // indice dei caratteri della riga del file
     int j = 0;    // indice dei caratteri della parola
     int riga = 0;   // indice riga del file
-    char rowFile[2049];   //riga file
+    char rowFile[BUFFER];   //riga file
     int sub_str = 0;    // caratteri accentati nella riga del file
     int sub_par = 0;    // caratteri accentati nella parola
     int sub_tot = 0;    // sub_str - sub_par
@@ -51,7 +52,7 @@ struct Occurrencies* kmpInFile(char *parola, char *filename, int *totOcc){
         if(isCharInStr(parola[k], low_accenti) != -1) sub_par++;
 
     // calcola KMP
-    while (fgets (rowFile, 2049, file)) {
+    while (fgets (rowFile, BUFFER, file)) {
 
         if((strcmp(rowFile,"\n") == 0) || strcmp(rowFile,"\r\n") == 0) {
           riga++;
